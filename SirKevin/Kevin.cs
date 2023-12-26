@@ -245,7 +245,17 @@ namespace KevinTheCrisp
 
             if (message.Author.IsBot) { return; }
 
-            string userMessage = $"[author: {message.Author.Username}]: {message.Content}";
+            string user;
+            if (message.Author.GlobalName != null)
+            {
+                user = message.Author.GlobalName;
+            }
+            else
+            {
+                user = message.Author.Username;
+            }
+
+            string userMessage = $"[author: {user}]: {message.Content}";
             Console.WriteLine(userMessage + " - " + tokens);
 
             if (!sentInitialMessage)
@@ -268,7 +278,6 @@ namespace KevinTheCrisp
 
             _handler.AddChatHistory(userMessage);
             Console.WriteLine(num);
-
 
             if (message.Content.StartsWith("/chat"))
             {
@@ -323,6 +332,8 @@ namespace KevinTheCrisp
 
         public async Task ReadyAsync()
         {
+            await _client.SetGameAsync("with your fragile egos. Use /chat to draw my disdain.");
+            
             Console.WriteLine($"{_client.CurrentUser.Username} is connected!");
         }
     }
