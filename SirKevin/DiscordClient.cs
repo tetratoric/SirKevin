@@ -3,6 +3,7 @@ using Discord;
 using Discord.Net;
 using Discord.WebSocket;
 using Newtonsoft.Json;
+using SirKevin;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,17 +14,18 @@ using System.Threading.Tasks;
 
 namespace KevinTheCrisp
 {
-    internal class Kevin
+    internal class DiscordClient
     {
-        public static Task Main(string[] args) => new Kevin().MainAsync();
+        public static Task Main(string[] args) => new DiscordClient().MainAsync();
 
-        
         private DiscordSocketClient _client;
         bool sentInitialMessage = false;
         SocketUser? lastAuthor;
 
         private GPTHandler _handler;
         int tokens = 0, interjectionChance = 25;
+
+        const string botName = Configuration.botName;
 
         public async Task MainAsync()
         {
@@ -40,7 +42,7 @@ namespace KevinTheCrisp
             _client.Ready += Client_Ready;
             _client.SlashCommandExecuted += SlashCommandHandler;
 
-            string token = "TOKEN";
+            string token = Configuration.discordToken;
 
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
@@ -52,45 +54,45 @@ namespace KevinTheCrisp
 
         public async Task Client_Ready()
         {
-            var kevinCommands = new SlashCommandBuilder()
-                .WithName("kevin")
-                .WithDescription("Manipulate Kevin to your will.")
+            var botCommands = new SlashCommandBuilder()
+                .WithName(botName)
+                .WithDescription($"Manipulate {botName} to your will.")
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("lore")
-                    .WithDescription("Manipulates Kevin's lore, with which he uses to create his identity and responses.")
+                    .WithDescription($"Manipulates {botName}'s lore, with which it uses to create its identity and responses.")
                     .WithType(ApplicationCommandOptionType.SubCommandGroup)
                     .AddOption(new SlashCommandOptionBuilder()
                         .WithName("set")
-                        .WithDescription("Sets Kevin's lore to [value] and resets chat history.")
+                        .WithDescription($"Sets {botName}'s lore to [value] and resets chat history.")
                         .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("value", ApplicationCommandOptionType.String, "Kevin's new lore", isRequired: true)
+                        .AddOption("value", ApplicationCommandOptionType.String, $"{botName}'s new lore", isRequired: true)
                     ).AddOption(new SlashCommandOptionBuilder()
                         .WithName("get")
-                        .WithDescription("Gets Kevin's current lore message.")
+                        .WithDescription($"Gets {botName}'s current lore message.")
                         .WithType(ApplicationCommandOptionType.SubCommand)
                     )
                 ).AddOption(new SlashCommandOptionBuilder()
                     .WithName("probability")
-                    .WithDescription("Sets the chance of Kevin randomly deciding to respond to any given message")
+                    .WithDescription($"Sets the chance of {botName} randomly deciding to respond to any given message")
                     .WithType(ApplicationCommandOptionType.SubCommand)
                     .AddOption("value", ApplicationCommandOptionType.Integer, "1 in [value] chance of responding to a message", isRequired: true)
                 ).AddOption(new SlashCommandOptionBuilder()
                     .WithName("defaultprompt")
-                    .WithDescription("Manipulates Kevin's default prompt, which he uses to send his initial message at start up.")
+                    .WithDescription($"Manipulates {botName}'s default prompt, which it uses to send its initial message at start up.")
                     .WithType(ApplicationCommandOptionType.SubCommandGroup)
                     .AddOption(new SlashCommandOptionBuilder()
                         .WithName("set")
-                        .WithDescription("Sets Kevin's default prompt to [value] and resets chat history.")
+                        .WithDescription($"Sets {botName}'s default prompt to [value] and resets chat history.")
                         .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("value", ApplicationCommandOptionType.String, "Kevin's new default prompt", isRequired: true)
+                        .AddOption("value", ApplicationCommandOptionType.String, $"{botName}'s new default prompt", isRequired: true)
                     ).AddOption(new SlashCommandOptionBuilder()
                         .WithName("get")
-                        .WithDescription("Gets Kevin's current default prompt.")
+                        .WithDescription($"Gets {botName}'s current default prompt.")
                         .WithType(ApplicationCommandOptionType.SubCommand)
                     )
                 ).AddOption(new SlashCommandOptionBuilder()
                     .WithName("restore")
-                    .WithDescription("Restores Kevin to crisp, delicious, default settings.")
+                    .WithDescription($"Restores {botName} to crisp, delicious, default settings.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
                 ).AddOption(new SlashCommandOptionBuilder()
                     .WithName("clear")
@@ -99,7 +101,7 @@ namespace KevinTheCrisp
                 );
             try
             {
-                await _client.CreateGlobalApplicationCommandAsync(kevinCommands.Build());
+                await _client.CreateGlobalApplicationCommandAsync(botCommands.Build());
             }
             catch (HttpException exception)
             {
@@ -113,13 +115,13 @@ namespace KevinTheCrisp
         {
             switch (command.Data.Name)
             {
-                case "kevin":
-                    await HandleKevinCommand(command);
+                case botName:
+                    await HandleBotCommand(command);
                     break;
             }
         }
 
-        public async Task HandleKevinCommand(SocketSlashCommand command)
+        public async Task HandleBotCommand(SocketSlashCommand command)
         {
             var action = command.Data.Options.First();
             string actionName = action.Name;
@@ -133,14 +135,14 @@ namespace KevinTheCrisp
                     {
                         case "set":
                             string newLore = (string)loreOption.Options.First().Value;
-                            _handler.lore = newLore;
-                            Console.WriteLine("Replaced lore with: " + _handler.lore);
+                            _handler.currentLore = newLore;
+                            Console.WriteLine("Replaced lore with: " + _handler.currentLore);
                             sentInitialMessage = false;
 
                             var newLoreResponse = new EmbedBuilder()
                                 .WithAuthor(command.User)
                                 .WithTitle("New Lore")
-                                .WithDescription(_handler.lore)
+                                .WithDescription(_handler.currentLore)
                                 .WithColor(Color.Gold);
 
                             await command.RespondAsync(embed: newLoreResponse.Build());
@@ -148,7 +150,7 @@ namespace KevinTheCrisp
                         case "get":
                             var getLoreResponse = new EmbedBuilder()
                                 .WithTitle("Lore")
-                                .WithDescription(_handler.lore)
+                                .WithDescription(_handler.currentLore)
                                 .WithColor(Color.Gold);
 
                             await command.RespondAsync(embed: getLoreResponse.Build());
@@ -162,7 +164,7 @@ namespace KevinTheCrisp
 
                     if (randNum > 0) { 
                         interjectionChance = randNum;
-                        response = $"Set Kevin's chance of randomly interjecting to 1 in {interjectionChance}.";
+                        response = $"Set {botName}'s chance of randomly interjecting to 1 in {interjectionChance}.";
                     } else
                     {
                         response = $"{randNum} is an invalid value. It must be an integer greater than 0.";
@@ -182,14 +184,14 @@ namespace KevinTheCrisp
                     {
                         case "set":
                             string newPrompt = (string)promptOption.Options.First().Value;
-                            _handler.defaultMessage = newPrompt;
-                            Console.WriteLine("Replaced default prompt with: " + _handler.defaultMessage);
+                            _handler.currentDefaultPrompt = newPrompt;
+                            Console.WriteLine("Replaced default prompt with: " + _handler.currentDefaultPrompt);
                             sentInitialMessage = false;
 
                             var newPromptResponse = new EmbedBuilder()
                                 .WithAuthor(command.User)
                                 .WithTitle("New Prompt")
-                                .WithDescription(_handler.defaultMessage)
+                                .WithDescription(_handler.currentDefaultPrompt)
                                 .WithColor(Color.Gold);
 
                             await command.RespondAsync(embed: newPromptResponse.Build());
@@ -198,7 +200,7 @@ namespace KevinTheCrisp
                         case "get":
                             var getPromptResponse = new EmbedBuilder()
                                 .WithTitle("Prompt")
-                                .WithDescription(_handler.defaultMessage)
+                                .WithDescription(_handler.currentDefaultPrompt)
                                 .WithColor(Color.Gold);
 
                             await command.RespondAsync(embed: getPromptResponse.Build());
@@ -207,11 +209,11 @@ namespace KevinTheCrisp
                     break;
 
                 case "restore":
-                    _handler.RestoreKevin();
+                    _handler.RestoreBot();
                     sentInitialMessage = false;
 
                     var restoreResponse = new EmbedBuilder()
-                        .WithDescription("Restored Kevin to defaults.")
+                        .WithDescription($"Restored {botName} to defaults.")
                         .WithColor(Color.Gold);
 
                     await command.RespondAsync(embed:  restoreResponse.Build());
@@ -268,7 +270,7 @@ namespace KevinTheCrisp
                     string response = _handler.SendInitialMessage();
 
                     tokens = _handler.CalculateTokens();
-                    Console.WriteLine($"[kevin]: {response} - {tokens}");
+                    Console.WriteLine($"[{botName}]: {response} - {tokens}");
 
                     var myEmbed = QuickEmbeder(response);
 
@@ -288,7 +290,7 @@ namespace KevinTheCrisp
                     string response = _handler.Respond();
 
                     tokens = _handler.CalculateTokens();
-                    Console.WriteLine($"[kevin]: {response} - {tokens}");
+                    Console.WriteLine($"[{botName}]: {response} - {tokens}");
                     lastAuthor = message.Author;
 
                     var myEmbed = QuickEmbeder(response);
@@ -304,7 +306,7 @@ namespace KevinTheCrisp
                     string response = _handler.Respond();
 
                     tokens = _handler.CalculateTokens();
-                    Console.WriteLine($"[kevin]: {response} - {tokens}");
+                    Console.WriteLine($"[{botName}]: {response} - {tokens}");
 
                     lastAuthor = message.Author;
 
@@ -332,7 +334,7 @@ namespace KevinTheCrisp
 
         public async Task ReadyAsync()
         {
-            await _client.SetGameAsync("with your fragile egos. Use /chat to draw my disdain.");
+            await _client.SetGameAsync(Configuration.botStatusMessage);
             
             Console.WriteLine($"{_client.CurrentUser.Username} is connected!");
         }
