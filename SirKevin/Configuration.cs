@@ -28,7 +28,8 @@ namespace SirKevin
         public const string botStatusMessage = "STATUS";
 
         // Set this to what you want your bot to be called internally and through slash commands
-        // Mine is called Kevin. Yours could be Jimmy
-        public const string botName = "NAME";
+        // Mine is called kevin. Yours could be jimmy
+        // MUST BE LOWER CASE!!!
+        public const string botName = "name";
     }
 }
